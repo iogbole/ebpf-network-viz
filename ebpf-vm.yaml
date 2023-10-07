@@ -1,0 +1,37 @@
+# This config requires Lima v0.8.0 or later
+images:
+- location: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.img"
+  arch: "x86_64"
+- location: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-arm64.img"
+  arch: "aarch64"
+
+cpus: 3
+memory: "5GiB"
+
+mounts:
+- location: "~"
+  writable: true
+- location: "/tmp/lima"
+  writable: true
+provision:
+- mode: system
+  script: |
+    apt-get update
+    apt-get install -y apt-transport-https ca-certificates curl clang llvm jq 
+    apt-get install -y libelf-dev libpcap-dev libbpf-dev libbfd-dev binutils-dev build-essential make 
+    apt-get install -y linux-tools-common linux-tools-$(uname -r) bpfcc-tools
+    apt-get install -y python3-pip
+    apt-get install -y golang-go 
+    apt-get install -y git build-essential libelf-dev flex bison 
+    apt-get install -y sudo gcc-multilib
+
+
+
+# git clone --depth 1 --branch v5.10 git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
+#cd linux/tools/bpf/bpftool
+#make
+#sudo make install && bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
+# add to path . find sudo find / -name bpftool 2>/dev/null
+# echo 'export PATH=$PATH:/usr/sbin/' >> ~/.bashrc
+# source ~/.bashrc
+ 
