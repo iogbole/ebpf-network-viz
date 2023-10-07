@@ -11,7 +11,7 @@ for ((i = 1; i <= loop_count; i++)); do
     for site in "${websites[@]}"; do
         echo "Sending request to $site (iteration $i)"
         curl -sS "$site" > /dev/null
-        sleep 5
+        sleep 1
         wget -O- "$site" > /dev/null # O redirects output to stdout coz I don't wanna save the file.
     done
 done
