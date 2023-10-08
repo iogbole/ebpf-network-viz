@@ -44,7 +44,7 @@ The flexibility, safety, and power that eBPF provides make it an invaluable tool
 
 For those looking to delve deeper into eBPF, I recommend checking out the resources in the reference section, starting with [What is eBPF](https://ebpf.io/what-is-ebpf/)?
 
-Preparation and Environment Setup
+## Preparation and Environment Setup
 
 Before we embark on our journey through code and monitoring, it's important to have your development environment properly configured. While this blog isn't an exhaustive tutorial, I'll outline the key prerequisites for your convenience.
 
@@ -60,7 +60,6 @@ Before we embark on our journey through code and monitoring, it's important to h
 
     ```
 
-  
 
 2. If you're fond of Visual Studio Code, you can connect to the Lima VM via SSH:
 
