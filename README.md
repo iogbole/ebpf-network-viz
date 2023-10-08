@@ -138,7 +138,7 @@ The headers are essential for the program to function correctly. Notably, `vmlin
 
 ```
 
-Data Structures
+#### Data Structures
 
 The `event` and `tcp_retransmit_skb_ctx` structures are defined to hold the information related to TCP retransmissions. The structures collect various fields such as timestamps, process IDs, source and destination ports, and more.
 
@@ -204,7 +204,7 @@ struct {
 
 ```
 
-Tracepoint Function
+#### Tracepoint Function
 
 The function `tracepoint__tcp__tcp_retransmit_skb` is attached to the `tcp_retransmit_skb` tracepoint. Here, various fields are read and stored in an `event` structure.
 
@@ -220,7 +220,7 @@ int tracepoint__tcp__tcp_retransmit_skb(struct tcp_retransmit_skb_ctx *ctx) {
 
 ```
 
-Compiling the eBPF Code
+#### Compiling the eBPF Code
 
 You can compile this eBPF code using the script `run_clang.sh`:
 
@@ -273,9 +273,9 @@ tp, err := link.Tracepoint("tcp", "tcp_retransmit_skb", prog, nil)
 
 ```
 
-Perf Event Ring Buffer
+#### Perf Event Buffer
 
-A perf event ring buffer is set up to read events from the kernel space.
+A perf event buffer is set up to read events from the kernel space.
 
 ```go
 
@@ -283,7 +283,7 @@ events, err := perf.NewReader(coll.Maps["events"], os.Getpagesize())
 
 ```
 
-The Perf Event Ring Buffer plays an essential part in bridging the gap between user-space and kernel-space communication. This buffer is a data structure that's set up to read events directly from the kernel. Essentially, it acts as a queuing mechanism, holding data that your eBPF program collects from various probes until your user-space application is ready to process it.
+The Perf Event Buffer plays an essential part in bridging the gap between user-space and kernel-space communication. This buffer is a data structure that's set up to read events directly from the kernel. Essentially, it acts as a queuing mechanism, holding data that your eBPF program collects from various probes until your user-space application is ready to process it.
 
 Here's how it generally works: 
 
@@ -291,13 +291,15 @@ Here's how it generally works:
 
   
 
-2. This data is then pushed to the Perf Event Ring Buffer.
+2. This data is then pushed to the Perf Event Buffer.
 
   
 
-3. Your user-space application, which could be written in Go, Python, or any other language that has eBPF library support, then reads from this ring buffer to retrieve the data for further analysis or action.
+3. Your user-space application, written in Go, in this case, then reads from this buffer to retrieve the data for further analysis or action.
 
-By leveraging a Perf Event Ring Buffer, you gain a highly efficient, low-overhead mechanism for transferring data from kernel space to user space, making it a critical component in the process of monitoring, troubleshooting, and enhancing system performance.
+By leveraging a Perf Event Buffer, you gain a highly efficient, low-overhead mechanism for transferring data from kernel space to user space, making it a critical component in the process of monitoring, troubleshooting, and enhancing system performance. 
+
+The Ring Buffer is a more modern alternative to Perf Event buffers, suitable for newer Kernel version
 
 Exposing eBPF Data Through a Prometheus Endpoint
 
@@ -305,7 +307,7 @@ To expose the metrics gathered by your eBPF program for monitoring, we integrate
 
 #### Prometheus Metrics Definition
 
-Firstly, we define the metrics that Prometheus will scrape. In this instance, the focus is on TCP retransmissions. The metric is defined using Prometheus's Go client library:
+Firstly, we define the events and metrics that Prometheus will scrape. In this instance, the focus is on TCP retransmissions. 
 
 ```go
 
@@ -319,7 +321,7 @@ var tcpRetransmissions = promauto.NewCounterVec(prometheus.CounterOpts{
 
 ```
 
-Starting the HTTP Server
+#### Starting the HTTP Server
 
 After defining the metrics, the next step is to expose them through an HTTP endpoint. This is done by starting an HTTP server and mapping the `/metrics` path to a Prometheus handler:
 
@@ -345,13 +347,13 @@ In this example, the HTTP server listens on port 2112, and Prometheus is configu
 
 By combining these two components, you create a seamless pipeline that collects, exposes, and monitors TCP retransmission metrics in real-time.
 
-The Event Loop and Metrics Update
+#### The Event Loop and Metrics Update
 
 The heart of the real-time monitoring lies in the event loop, which is continuously polling for new events from the perf event ring buffer. Each incoming event is processed and the relevant Prometheus metrics are updated accordingly.
 
 **Listening for Events**
 
-The loop employs the `Read()` method on the perf ring buffer to listen for new incoming events:
+The loop employs the `Read()` method on the perf buffer to listen for new incoming events:
 
 ```go
 
@@ -395,7 +397,7 @@ for {
 
 ```
 
-By marrying this event loop with the previously described Prometheus setup, the system efficiently collects, processes, and exposes metrics for TCP retransmissions in a manner that is readily compatible with monitoring tools and dashboards. This creates an end-to-end pipeline, facilitating real-time insights into network behaviour.
+By marrying this event loop with the previously described Prometheus setup, the system efficiently collects, processes, and exposes metrics for TCP retransmissions in a manner that is readily compatible with other monitoring and observability tools. 
 
 Next, ensure the go code works: 
 
@@ -410,7 +412,7 @@ This is also a good time to confirm that the Go HTTP server is up and running:
 
 ![GO HTTPServer](https://github.com/iogbole/ebpf-network-viz/assets/2548160/35436e9e-a451-4f27-9126-5e0ecba08651)
 
-Setting Up Prometheus in the Lima VM using nerdctl
+### Setting Up Prometheus in the Lima VM using nerdctl
 
 Since the development environment is within a Lima VM, it's advantageous to leverage nerdctl for container management. nerdctl is a Docker-compatible CLI tool for containers, which is already bundled with Lima. Here's how to set up Prometheus using a custom configuration and a shell script for automation.
 
@@ -558,9 +560,7 @@ So grab a cup of coffee, sit back, and enjoy the fruit of your labour!
 
 
 
-# Ref
-
-
+# Refs
 
 * Must read - https://www.man7.org/linux/man-pages/man2/bpf.2.html
 * Retrans fields: https://github.com/iovisor/bcc/blob/master/tools/tcpretrans_example.txt
