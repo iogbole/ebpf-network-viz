@@ -6,7 +6,6 @@ But why eBPF and, more specifically, why focus on monitoring TCP retransmissions
 
 This blog is intended to chronicle my hands-on exploration of eBPF and Go, and is aimed at anyone interested in diving into these technologies. We'll explore how to effectively monitor network events using eBPF, Go, and Prometheus.
 
-
 ## The Ghost in the Network: TCP Retransmissions
 
 Imagine working on a high-speed, low-latency product and encountering intermittent slowdowns in data transmission. This situation can be tricky to diagnose, it is often intermittent and could bring your product to its knees. When I faced this issue, I took it upon myself to delve deep and understand what was happening under the hood. Wireshark led me to the root cause: excessive TCP retransmissions due to firewall policy.
@@ -25,7 +24,7 @@ TCP retransmissions aren't inherently bad; they're a fundamental part of how TCP
 
 You can easily simulate TCP retransmission, try: 
 
-**_sudo tc qdisc add dev eth0 root netem loss 10% delay 100ms _**
+`sudo tc qdisc add dev eth0 root netem loss 10% delay 100ms`
 
 on your machine and see how it messes up your network performance and introduces high-CPU usage. I was once crazy enough to use 50% in EC2  and it booted me out of SSH connection until I restarted the node.  Do not try this out at home ;) 
 
@@ -36,7 +35,7 @@ Extended Berkeley Packet Filter (eBPF) is a revolutionary technology, available 
 
 In technical terms, eBPF allows the kernel to execute BPF bytecode. The code is often written in a restricted subset of the C language, which is then compiled into BPF bytecode using a compiler like Clang. This bytecode undergoes stringent verification processes to ensure it neither intentionally nor inadvertently jeopardises the integrity of the Linux kernel. Additionally, eBPF programmes are guaranteed to execute within a finite number of instructions, making them suitable for performance-sensitive tasks such as packet filtering and network monitoring.
 
-Functionally, eBPF allows you to run this restricted C code in response to various events, such as timers, network events, or function calls within both the kernel and user-space programs. These pieces of code are often referred to as 'probes'—kprobes for kernel function calls, uprobes for user-space function calls, and tracepoints for pre-defined hooks in the Linux kernel. In the context of this blog post, we'll be focusing on tracepoints, specifically leveraging the <code><em>tcp_retransmit_skb</em></code>  tracepoint for monitoring TCP retransmissions. Tracepoints offer a stable API for kernel observability, which is especially useful for production environments.
+Functionally, eBPF allows you to run this restricted C code in response to various events, such as timers, network events, or function calls within both the kernel and user-space programs. These pieces of code are often referred to as 'probes'—`kprobes` for kernel function calls, `uprobes` for user-space function calls, and `tracepoints` for pre-defined hooks in the Linux kernel. In the context of this blog post, we'll be focusing on tracepoints, specifically leveraging the <code><em>tcp_retransmit_skb</em></code>  tracepoint for monitoring TCP retransmissions. Tracepoints offer a stable API for kernel observability, which is especially useful for production environments.
 
 The flexibility, safety, and power that eBPF provides make it an invaluable tool for monitoring TCP retransmissions, a subject we will explore in detail here.
 
@@ -46,7 +45,9 @@ For those looking to delve deeper into eBPF, I recommend checking out the resour
 
 Before we embark on our journey through code and monitoring, it's important to have your development environment properly configured. While this blog isn't an exhaustive tutorial, I'll outline the key prerequisites for your convenience.
 
-**Using Lima on macOS**: If you're a macOS user like me, Lima is an excellent way to emulate a Linux environment. It's simple to set up and meshes seamlessly with your existing workflow. To kick things off with Lima, follow these steps:
+### **Using Lima on macOS**
+
+If you're a macOS user like me, Lima is an excellent way to emulate a Linux environment. It's simple to set up and meshes seamlessly with your existing workflow. To kick things off with Lima, follow these steps:
 
 1. Install Lima and launch it with your configuration file:
 
@@ -57,8 +58,6 @@ Before we embark on our journey through code and monitoring, it's important to h
     limactl shell ebpf-vm
 
     ```
-
-
 2. If you're fond of Visual Studio Code, you can connect to the Lima VM via SSH:
 
     ```bash
@@ -77,7 +76,9 @@ Before we embark on our journey through code and monitoring, it's important to h
 
     ```
 
-**Manual Setup on Linux**: If you're opting for a manual setup on Linux, here's what you'll need:
+### **Manual Setup on Linux**
+
+If you're opting for a manual setup on Linux, here's what you'll need:
 
 1. **Operating System**: A Linux OS like Debian is recommended, featuring the latest kernel. I'm currently using version 5.15.x. To confirm your kernel version, type `uname -a`.
 
@@ -93,7 +94,6 @@ With your environment now primed, you're all set to delve into the fascinating w
 
 
 ## The Solution
-
 
 ### Overview of Components
 
@@ -120,11 +120,11 @@ The code can be broadly broken down into the following components, summarised th
 
 
 ### Anatomy of the eBPF C Code
-
+source: [retrans.c](https://github.com/iogbole/ebpf-network-viz/blob/main/ebpf/retrans.c)
 
 #### Include Headers
 
-The headers are essential for the program to function correctly. Notably, `vmlinux.h` is a header generated by BPF CO-RE. BPF CO-RE (Compile Once, Run Everywhere) enhances the portability of eBPF programs across different kernel versions. It resolves as much as possible at compile time, using placeholders for kernel-specific information that can only be determined at runtime. When the program is loaded into the kernel, these placeholders are populated with actual values. This flexibility eliminates the need for recompilation when deploying on different kernel versions. Through BPF CO-RE, the `vmlinux.h` header is generated to represent kernel structures, making it easier to write eBPF programs that are not tightly bound to specific kernels.
+The headers are essential for the program to function correctly. Notably, [`vmlinux.h`](https://github.com/iogbole/ebpf-network-viz/blob/main/ebpf/vmlinux.h) is a header generated by BPF CO-RE. BPF CO-RE (Compile Once, Run Everywhere) enhances the portability of eBPF programs across different kernel versions. It resolves as much as possible at compile time, using placeholders for kernel-specific information that can only be determined at runtime. When the program is loaded into the kernel, these placeholders are populated with actual values. This flexibility eliminates the need for recompilation when deploying on different kernel versions. Through BPF CO-RE, the `vmlinux.h` header is generated to represent kernel structures, making it easier to write eBPF programs that are not tightly bound to specific kernels.
 
 ```c
 
@@ -161,7 +161,6 @@ struct tcp_retransmit_skb_ctx {
 };
 
 ```
-
 
 ##### **Finding Data Structures for Other Tracepoints**
 
@@ -222,7 +221,7 @@ int tracepoint__tcp__tcp_retransmit_skb(struct tcp_retransmit_skb_ctx *ctx) {
 
 #### Compiling the eBPF Code
 
-You can compile this eBPF code using the script `run_clang.sh`:
+You can compile this eBPF code using the script [`run_clang.sh`](https://github.com/iogbole/ebpf-network-viz/blob/main/run_clang.sh):
 
 ```bash
 
@@ -233,6 +232,7 @@ clang -O2 -g -target bpf -c ./ebpf/retrans.c -o ./ebpf/retrans.o -I/usr/include 
 
 ### Anatomy of the Go Program
 
+source: [retrans.go](https://github.com/iogbole/ebpf-network-viz/blob/main/retrans.go)
 
 #### Import Packages
 
@@ -289,11 +289,7 @@ Here's how it generally works:
 
 1. Your eBPF program attaches to specific kernel functions or tracepoints and collects data, such as packet information in the case of networking or syscall information for system-level observability.
 
-  
-
 2. This data is then pushed to the Perf Event Buffer.
-
-  
 
 3. Your user-space application, written in Go, in this case, then reads from this buffer to retrieve the data for further analysis or action.
 
@@ -421,6 +417,8 @@ Since the development environment is within a Lima VM, it's advantageous to leve
 
 #### Prometheus Configuration: `prometheus.yml`
 
+source: [prometheus.yml](https://github.com/iogbole/ebpf-network-viz/blob/main/prom_config/prometheus.yml)
+
 The `prometheus.yml` configuration specifies how often Prometheus scrapes metrics and from where. In this case, it is configured to scrape the metrics exposed by the Go application running on port 2112. 
 
 Here's the content of `prometheus.yml`:
@@ -454,14 +452,6 @@ The shell script performs several tasks to ensure Prometheus runs correctly:
 ```bash
 
 #!/bin/bash
-
-# nerdctl comes pre-installed with Lima.
-
-# Lima does automatic port forwarding, so Prometheus should be accessible on your Mac at localhost:9090 when done.
-
-# The Go app exposes an HTTP port at 2112, which should be accessible on your Mac at localhost:2112/metrics.
-
-# Get the IP address of eth0 on the host machine.
 
 IP_ADDRESS=$(ip -4 addr show eth0 | grep -oP '(?&lt;=inet\s)\d+(\.\d+){3}')
 
@@ -568,6 +558,6 @@ So grab a cup of coffee, sit back, and enjoy the fruit of your labour!
 
 * Must read - https://www.man7.org/linux/man-pages/man2/bpf.2.html
 * Retrans fields: https://github.com/iovisor/bcc/blob/master/tools/tcpretrans_example.txt
-* BPF CORE : https://facebookmicrosites.github.io/bpf/blog/2020/02/19/bpf-portability-and-co-re.html
-* TCP tracepoints : https://www.brendangregg.com/blog/2018-03-22/tcp-tracepoints.html
-* eBPF applications : https://ebpf.io/applications/
+* BPF CORE: https://facebookmicrosites.github.io/bpf/blog/2020/02/19/bpf-portability-and-co-re.html
+* TCP tracepoints: https://www.brendangregg.com/blog/2018-03-22/tcp-tracepoints.html
+* eBPF applications: https://ebpf.io/applications/
