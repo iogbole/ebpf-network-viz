@@ -1,9 +1,10 @@
-
 # Monitoring TCP Retransmissions with eBPF, Go, and Prometheus: A Beginners guide to eBPF. 
 
-As a Product Manager who enjoys writing proof-of-concept (PoC) code to better understand the intricacies of the technologies and ideas I'm exploring, I've found eBPF to be particularly irresistible. This curiosity was sparked by a past experience where diagnosing intermittent packet losses was nothing short of a nightmare. With my MBA now complete, I've started reading Liz Rice's book on eBPF and couldn't resist the temptation to get hands-on. Had I had access to eBPF during that challenging time, using it for passive network monitoring would have simplified the process immensely. 
+As a Technical Product Manager, I do more than just manage products—I deeply engage with the technology that underpins them. In my case, this technology is eBPF (Extended Berkeley Packet Filter). Having recently completed my MBA, I picked up Liz Rice's ["Learning eBPF"](https://isovalent.com/books/learning-ebpf/) book. The book was so enlightening that I couldn't resist rolling up my sleeves to get hands-on with this revolunationary technology.
 
-This blog is primarily a record of my learning path into eBPF and Go, and it's intended for anyone who is curious about taking a stab at it. Here, we'll delve into how you can effectively monitor network events using eBPF, Go, and Prometheus.
+But why eBPF and, more specifically, why focus on monitoring TCP retransmissions? Well, a past nasty experience involving troubleshooting intermittent connectivity issues for an APM agent in production for a customer left me realising the need for better tools; Wireshark has its limitations. Had eBPF been in my toolkit back then, that daunting issue would have been far easier to diagnose and resolve.
+
+This blog is intended to chronicle my hands-on exploration of eBPF and Go, and is aimed at anyone interested in diving into these technologies. We'll explore how to effectively monitor network events using eBPF, Go, and Prometheus.
 
 
 ## The Ghost in the Network: TCP Retransmissions
@@ -11,8 +12,7 @@ This blog is primarily a record of my learning path into eBPF and Go, and it's i
 Imagine working on a high-speed, low-latency product and encountering intermittent slowdowns in data transmission. This situation can be tricky to diagnose, it is often intermittent and could bring your product to its knees. When I faced this issue, I took it upon myself to delve deep and understand what was happening under the hood. Wireshark led me to the root cause: excessive TCP retransmissions due to firewall policy.
 
 
-
-![TCP_RESTRANS](https://github.com/iogbole/ebpf-network-viz/assets/2548160/7eb67240-2514-4a4a-9140-c5c8ac603a66)
+<img width="500" alt="tcp retransmission" src="https://github.com/iogbole/ebpf-network-viz/assets/2548160/7eb67240-2514-4a4a-9140-c5c8ac603a66">
 
 
 Fig 1. Depiction of TCP retransmission. Get the[ mermaid source](https://www.mermaidchart.com/raw/7d9b1dfe-a681-4079-b338-9314eed422f1?version=v0.1&theme=light&format=svg). 
