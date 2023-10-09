@@ -1,6 +1,6 @@
 # Monitoring TCP Retransmissions with eBPF, Go, and Prometheus: A Beginners guide to eBPF. 
 
-As a Technical Product Manager, I do more than just manage products—I deeply engage with the technology that underpins them. In my case, this technology is eBPF (Extended Berkeley Packet Filter). Having recently completed my MBA, I picked up Liz Rice's ["Learning eBPF"](https://isovalent.com/books/learning-ebpf/) book. The book was so enlightening that I couldn't resist rolling up my sleeves to get hands-on with this revolunationary technology.
+As a Technical Product Manager, I do more than just manage products—I deeply engage with the technology that underpins them. In my case, this technology is eBPF (Extended Berkeley Packet Filter). Having recently completed my MBA, I picked up Liz Rice's ["Learning eBPF"](https://isovalent.com/books/learning-ebpf/) book. The book was so enlightening that I couldn't resist rolling up my sleeves to get hands-on with this revolutionary technology.
 
 But why eBPF and, more specifically, why focus on monitoring TCP retransmissions? Well, a past nasty experience involving troubleshooting intermittent connectivity issues for an APM agent in production for a customer left me realising the need for better tools; Wireshark has its limitations. Had eBPF been in my toolkit back then, that daunting issue would have been far easier to diagnose and resolve.
 
@@ -11,11 +11,9 @@ This blog is intended to chronicle my hands-on exploration of eBPF and Go, and i
 
 Imagine working on a high-speed, low-latency product and encountering intermittent slowdowns in data transmission. This situation can be tricky to diagnose, it is often intermittent and could bring your product to its knees. When I faced this issue, I took it upon myself to delve deep and understand what was happening under the hood. Wireshark led me to the root cause: excessive TCP retransmissions due to firewall policy.
 
-
-<img width="500" alt="tcp retransmission" src="https://github.com/iogbole/ebpf-network-viz/assets/2548160/7eb67240-2514-4a4a-9140-c5c8ac603a66">
-
-
-Fig 1. Depiction of TCP retransmission. Get the[ mermaid source](https://www.mermaidchart.com/raw/7d9b1dfe-a681-4079-b338-9314eed422f1?version=v0.1&theme=light&format=svg). 
+<p align="center">
+<img width="400" alt="tcp retransmission" src="https://github.com/iogbole/ebpf-network-viz/assets/2548160/7eb67240-2514-4a4a-9140-c5c8ac603a66">
+</p>
 
 TCP retransmissions aren't inherently bad; they're a fundamental part of how TCP/IP networks function. However, when they occur frequently, they can signify network issues that lead to poor application performance. A high number of retransmissions can cause:
 
@@ -97,7 +95,6 @@ With your environment now primed, you're all set to delve into the fascinating w
 ## The Solution
 
 
-
 ### Overview of Components
 
 The code can be broadly broken down into the following components, summarised the digram below. 
@@ -116,7 +113,10 @@ The code can be broadly broken down into the following components, summarised th
 
 7. **Prometheus Scrapes Metrics**: Finally, Prometheus is configured to scrape these exposed metrics for monitoring or alerting purposes.
 
-![ebpf-tcp drawio](https://github.com/iogbole/ebpf-network-viz/assets/2548160/915d403e-61ac-4399-9f11-d4891b32fbd4)
+
+<p align="center">
+<img width="600" alt="the solution" src="https://github.com/iogbole/ebpf-network-viz/assets/2548160/915d403e-61ac-4399-9f11-d4891b32fbd4">
+</p>
 
 
 ### Anatomy of the eBPF C Code
@@ -407,10 +407,12 @@ sudo go run retrans.go
 
 ```
 
-
 This is also a good time to confirm that the Go HTTP server is up and running: 
 
-![GO HTTPServer](https://github.com/iogbole/ebpf-network-viz/assets/2548160/35436e9e-a451-4f27-9126-5e0ecba08651)
+<p align="center">
+<img width="1510" alt="go http server" src="https://github.com/iogbole/ebpf-network-viz/assets/2548160/35436e9e-a451-4f27-9126-5e0ecba08651">
+</p>
+
 
 ### Setting Up Prometheus in the Lima VM using nerdctl
 
@@ -483,9 +485,9 @@ Since Lima also does automatic port forwarding, you should be able to access Pro
 
 Check and ensure that the job_name is registered. 
 
-
-<img width="662" alt="prom_config" src="https://github.com/iogbole/ebpf-network-viz/assets/2548160/85c38250-b023-4b83-839d-2cd989a87d87">
-
+<p align="center">
+<img width="1510" alt="prom_config" src="https://github.com/iogbole/ebpf-network-viz/assets/2548160/85c38250-b023-4b83-839d-2cd989a87d87">
+</p>
 
 ## Create TCP Chaos: Testing It All Out
 
@@ -556,7 +558,9 @@ You're now in a position to set up alerts for TCP retransmissions. A common benc
 So grab a cup of coffee, sit back, and enjoy the fruit of your labour!
 
 
+<p align="center">
 <img width="1510"  src="https://github.com/iogbole/ebpf-network-viz/assets/2548160/a3e79887-90d7-426d-a7e0-3054144e9738">
+</p>
 
 
 
