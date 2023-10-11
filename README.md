@@ -1,130 +1,102 @@
-# Learning eBPF
 
-> **Warning**
->This repo does not follow the typical Go project layout. Every folder in this repo has a main function, as it is solely intended to demonstrate various possibilities.
+# Monitoring TCP Retransmissions with eBPF, Go, and Prometheus: A Beginners guide to eBPF. 
 
+Refer to this blog post for details - https://www.israelo.io/blog/ebpf-net-viz/ 
 
-## Dev env setup 
+## The Ghost in the Network: TCP Retransmissions
 
-There's a [Lima](https://github.com/lima-vm/lima) config file with the packages needed for building the code.
+TCP retransmissions aren't inherently bad; they're a fundamental part of how TCP/IP networks function. However, when they occur frequently, they can signify network issues that lead to poor application performance. A high number of retransmissions can cause:
 
-Install lima, then: 
+* **Increased Latency**: Packets have to be sent again, which takes extra time.
+* **Higher CPU Usage**: Both sending and receiving systems have to do additional work to handle the retransmissions.
+* **Bandwidth Inefficiency**: Retransmissions consume bandwidth that could be better used by new data.
+* **User Experience Degradation**: All the above contribute to a laggy or suboptimal user experience.
 
+<p align="center">
+<img width="600" alt="tcp retransmission" src="https://github-production-user-asset-6210df.s3.amazonaws.com/2548160/273732239-ec8dd025-ea85-4e7f-9ef3-0063ff75f1e0.png">
+</p>
+
+Imagine working on a high-speed, low-latency product and encountering intermittent slowdowns in data transmission. This situation can be tricky to diagnose and could bring your product to its knees. When I faced this issue, I took it upon myself to delve deep and understand what was happening under the hood. **Wireshark led me to the root cause: excessive TCP retransmissions due to a faulty firewall policy**.
+
+One can easily trigger TCP retransmission, by executing: 
+
+```bash
+sudo tc qdisc add dev eth0 root netem loss 10% delay 100ms
 ```
-limactl start ebpf-vm.yaml
-limactl shell ebpf-vm
-```
-
-If you'd like to use Visual Studio Code, 
-
-Get the SSH command 
-
-`limactl show-ssh ebpf-vm` 
-
-Then [Connect to remote server via SSH](https://code.visualstudio.com/docs/remote/ssh) in Visual Studio Code
-
-Next, clone the repo 
-
-`git clone https://github.com/iogbole/ebpf-playground.git`
+and it will surely mess up your network performance and introduce high CPU usage. I was once crazy enough to use 50% on an EC2 instance and it booted me out of SSH connection until I restarted the node via the console.  **Do not try this out at home ;)** 
 
 
-##  Running TCP retransmit ebpf code 
+## Why eBPF? 
+eBPF is a revolutionary technology that allows users to extend the functionality of the Linux kernel without having to modify the kernel code itself. It is essentially a lightweight, sandboxed virtual machine that resides within the kernel, offering secure and verified access to kernel memory.
 
-```
-cd ebpf-playground
+Moreso, eBPF code is typically written in a restricted subset of the C language and compiled into eBPF bytecode using a compiler like Clang/LLVM. This bytecode undergoes rigorous verification to ensure that it cannot intentionally or inadvertently jeopardize the integrity of the kernel. Additionally, eBPF programs are guaranteed to execute within a finite number of instructions, making them suitable for performance-sensitive use cases like observability and network security.
 
-cd tcp_retransmit 
+Here are some of the key benefits of using eBPF:
 
-make #to run the make file
-```
+* **Safety and security**: eBPF programs are sandboxed and verified, which means that they cannot harm the kernel or the system as a whole.
+* **Performance**: eBPF programs are extremely efficient and can be used to implement complex functionality without impacting system performance.
+* **Flexibility**: eBPF can be used to implement a wide range of functionality, including network monitoring, asset discovery, security, profiling, performance tracing, and more.
 
+Functionally, eBPF allows you to run this restricted C code in response to various events, such as timers, network events, or function calls within both the kernel and user space. These event hooks are often referred to as 'probes'—`kprobes` for kernel function calls, `uprobes` for user-space function calls, and `tracepoints` for pre-defined hooks in the Linux kernel.
 
-Or run each step below manually. The Makefile above automates all the steps below.
+In the context of this blog post, we'll be focusing on `tracepoints`, specifically leveraging the <code><em>tcp_retransmit_skb</em></code>  tracepoint for monitoring TCP retransmissions.  
 
+If you are completely new to eBPF, I recommend checking out the resources in the reference section below, starting with [What is eBPF](https://ebpf.io/what-is-ebpf/)?
 
+## Preparation and Environment Setup
+Before we begin, it's important to have your development environment properly configured. While this blog isn't an exhaustive tutorial, I'll outline the key prerequisites briefly. 
 
-```
+### **Using Lima on MacOS**
+If you're a MacOS user like me, Lima is an excellent way to emulate a Linux environment. It's simple to set up and meshes seamlessly with your existing workflow. To kick things off with Lima, follow these steps:
 
-sudo apt-get install -y bpfcc-tools #should be installed as part of the lima startup 
+1. Install Lima and launch it with the [ebpf-vm.yaml](https://github.com/iogbole/ebpf-network-viz/blob/main/ebpf-vm.yaml) file:
 
-bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h # See tip 2 below.
+    ```bash
+    limactl start ebpf-vm.yaml
+    limactl shell ebpf-vm
+    ```
+2. If you're fond of Visual Studio Code, you can connect to the Lima VM via SSH:
 
-./clang.sh  # Compile C code 
+    ```bash
+    limactl show-ssh ebpf-vm
+    ```
 
-go build retrans.go # Build go code  
+    Subsequently, use the SSH command to link up with the remote server through Visual Studio Code.
 
-./retrans # run go code 
+3. After establishing the connection, clone the required repository:
 
-```
+    ```bash
+    git clone https://github.com/iogbole/ebpf-network-viz.git
+    ```
 
-## Simulate packet loss to cause TCP transmission 
+### **Manual Setup on Linux**
 
-Now run the ./curl.sh to simulate packet loss. This script generates multiple TCP events using curl and wget, but `5%` of the TCP events are corrupted by force.
+If you’re opting for a manual setup on Linux, refer to the script section in the [ebpf-vm.yaml](https://github.com/iogbole/ebpf-network-viz/blob/main/ebpf-vm.yaml#L18) file.
 
-`sudo tc qdisc add dev eth0 root netem loss 5% delay 100ms`
+With your environment now primed, you’re all set to delve into the fascinating world of eBPF!
 
-You may increase the `5%` to `10%` if you want to force the kernel to perform more retransmissions, but doing so may disconnect your SSH access and the HTTP listener in the Go app.
+## The Solution
 
+The diagram below depicts the solution. 
 
+<p align="center">
+<img width="1510" alt="the solution" src="https://user-images.githubusercontent.com/2548160/273732796-16810c09-bf82-4bcb-a2ac-ca3ab04bfbb1.png">
+</p>
 
-## The Prometheus example 
+### Overview of the Components
 
-the `tcp_retrans_prom` folder contains an example of how to expose the telemetry for Prom to scrape it. 
+This is how the code works at a very high level:
 
-Execute the `run_prom.sh` to get prom started in the lima VM. 
-On your mac, go to http://localhost:9090 to be sure it is up and running 
+1. **Bytecode Loaded by Go**: The eBPF bytecode is loaded into the kernel using a Go program, which makes use of the `github.com/cilium/ebpf` package.
 
-The go app runs an HTTP server for prom at http://localhost:2112 
+2. **eBPF Code Hooks to Tracepoints**: The eBPF program uses the `tracepoint/tcp/tcp_retransmit_skb` to monitor TCP retransmissions. This allows the code to trigger whenever a TCP packet is retransmitted.
 
+2. **Collect Retransmission Events**: The data relating to the retransmitted packets—such as IP addresses, ports, and the protocol family are collected in a structured manner.
 
-## Prom Output 
-http://locahost:9090 
+4. **Use of eBPF Maps**: eBPF maps are used to communicate between the eBPF code running in the kernel and the Go application running in user space.
 
+5. **Perf Buffer**: A perf event buffer is used to read the events generated by the eBPF code.
 
-<img width="1410" alt="Screenshot 2023-04-23 at 7 45 30 pm" src="https://user-images.githubusercontent.com/2548160/233858880-d68090ce-26aa-48f7-b698-46275ade0e31.png">
+6. **Exposed to HTTP**: The Go application exposes the metrics over HTTP on port 2112.
 
-<img width="1404" alt="Screenshot 2023-04-23 at 7 43 37 pm" src="https://user-images.githubusercontent.com/2548160/233858885-0e011398-f7a4-47ee-8809-c1e2156402af.png">
-
-
-## Console Output 
-
-```
-{"destination":{"ip":"142.250.180.4","port":443},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":38130},"state":65536,"timestamp":"1970-01-04T23:40:37Z"}
-{"destination":{"ip":"142.250.180.4","port":443},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":38130},"state":720896,"timestamp":"1970-01-04T23:40:38Z"}
-{"destination":{"ip":"142.250.180.4","port":443},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":60288},"state":65536,"timestamp":"1970-01-04T23:40:44Z"}
-{"destination":{"ip":"192.168.5.2","port":51121},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":22},"state":65536,"timestamp":"1970-01-04T23:41:13Z"}
-{"destination":{"ip":"142.250.180.4","port":443},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":56912},"state":65536,"timestamp":"1970-01-04T23:41:51Z"}
-{"destination":{"ip":"142.250.180.4","port":443},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":56912},"state":65536,"timestamp":"1970-01-04T23:41:52Z"}
-```
-This output indicates that a TCP retransmission event has been captured, and it provides detailed of the event. 
-
---
-
-
-## Tips 
-
-1. Display tracepoint return fields 
-`sudo cat /sys/kernel/debug/tracing/events/tcp/tcp_retransmit_skb/format`
-
-2. To create the vmlinux.h file, you will need to use the BPF CO-RE (Compile Once, Run Everywhere) feature provided by bpftool. The vmlinux.h file is a generated header file that includes kernel structures and definitions required for BPF programs.
-
-To generate the vmlinux.h file, follow these steps:
-
-First, ensure you have bpftool installed on your system. You can usually find it in the linux-tools package or compile it from the kernel source.
-
-```
-bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
-```
-
-Now you should have a vmlinux.h file in your current working directory. You can include this file in your eBPF C programs to access kernel structures and definitions.
-
-Please note that the  vmlinux.h file is specific to the kernel version and configuration, so it's recommended to generate it for each target system where you want to run your eBPF program.
-
-
-## Refs
-
-Must read - https://www.man7.org/linux/man-pages/man2/bpf.2.html 
-Retrans fields: https://github.com/iovisor/bcc/blob/master/tools/tcpretrans_example.txt
-BPF CORE : https://facebookmicrosites.github.io/bpf/blog/2020/02/19/bpf-portability-and-co-re.html 
-TCP tracepoints : https://www.brendangregg.com/blog/2018-03-22/tcp-tracepoints.html 
-eBPF applications : https://ebpf.io/applications/
+7. **Prometheus Scrapes Metrics**: Finally, Prometheus is configured to scrape these exposed metrics for monitoring or alerting purposes.
