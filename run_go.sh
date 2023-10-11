@@ -1,5 +1,5 @@
 #!/bin/bash
 
-sudo go run retrans.go
+sudo go run main.go
 
 ./creat_tcp_chaos.sh

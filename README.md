@@ -1,130 +1,65 @@
-# Learning eBPF
 
-> **Warning**
->This repo does not follow the typical Go project layout. Every folder in this repo has a main function, as it is solely intended to demonstrate various possibilities.
+# Monitoring TCP Retransmissions with eBPF, Go, and Prometheus: A Beginners guide to eBPF. 
 
+Refer to this blog post for details on the background and motivation behind this project [https://www.israelo.io/blog/ebpf-net-viz/](https://www.israelo.io/blog/ebpf-net-viz/). 
 
-## Dev env setup 
+## The Solution
 
-There's a [Lima](https://github.com/lima-vm/lima) config file with the packages needed for building the code.
+The diagram below depicts the solution. 
 
-Install lima, then: 
+<p align="center">
+<img width="1510" alt="the solution" src="https://user-images.githubusercontent.com/2548160/273732796-16810c09-bf82-4bcb-a2ac-ca3ab04bfbb1.png">
+</p>
 
-```
-limactl start ebpf-vm.yaml
-limactl shell ebpf-vm
-```
+## Preparation and Environment Setup
+Before we begin, it's important to have your development environment properly configured. While this blog isn't an exhaustive tutorial, I'll outline the key prerequisites briefly. 
 
-If you'd like to use Visual Studio Code, 
+### **Using Lima on MacOS**
+If you're a MacOS user like me, Lima is an excellent way to emulate a Linux environment. It's simple to set up and meshes seamlessly with your existing workflow. To kick things off with Lima, follow these steps:
 
-Get the SSH command 
+1. Install Lima and launch it with the [ebpf-vm.yaml](https://github.com/iogbole/ebpf-network-viz/blob/main/ebpf-vm.yaml) file:
 
-`limactl show-ssh ebpf-vm` 
+    ```bash
+    limactl start ebpf-vm.yaml
+    limactl shell ebpf-vm
+    ```
+2. If you're fond of Visual Studio Code, you can connect to the Lima VM via SSH:
 
-Then [Connect to remote server via SSH](https://code.visualstudio.com/docs/remote/ssh) in Visual Studio Code
+    ```bash
+    limactl show-ssh ebpf-vm
+    ```
 
-Next, clone the repo 
+    Subsequently, use the SSH command to link up with the remote server through Visual Studio Code.
 
-`git clone https://github.com/iogbole/ebpf-playground.git`
+3. After establishing the connection, clone the required repository:
 
+    ```bash
+    git clone https://github.com/iogbole/ebpf-network-viz.git
+    ```
 
-##  Running TCP retransmit ebpf code 
+### **Manual Setup on Linux**
 
-```
-cd ebpf-playground
+If you’re opting for a manual setup on Linux, refer to the script section in the [ebpf-vm.yaml](https://github.com/iogbole/ebpf-network-viz/blob/main/ebpf-vm.yaml#L18) file.
 
-cd tcp_retransmit 
-
-make #to run the make file
-```
-
-
-Or run each step below manually. The Makefile above automates all the steps below.
-
-
-
-```
-
-sudo apt-get install -y bpfcc-tools #should be installed as part of the lima startup 
-
-bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h # See tip 2 below.
-
-./clang.sh  # Compile C code 
-
-go build retrans.go # Build go code  
-
-./retrans # run go code 
-
-```
-
-## Simulate packet loss to cause TCP transmission 
-
-Now run the ./curl.sh to simulate packet loss. This script generates multiple TCP events using curl and wget, but `5%` of the TCP events are corrupted by force.
-
-`sudo tc qdisc add dev eth0 root netem loss 5% delay 100ms`
-
-You may increase the `5%` to `10%` if you want to force the kernel to perform more retransmissions, but doing so may disconnect your SSH access and the HTTP listener in the Go app.
+With your environment now primed, you’re all set to delve into the fascinating world of eBPF!
 
 
+## Run 
 
-## The Prometheus example 
-
-the `tcp_retrans_prom` folder contains an example of how to expose the telemetry for Prom to scrape it. 
-
-Execute the `run_prom.sh` to get prom started in the lima VM. 
-On your mac, go to http://localhost:9090 to be sure it is up and running 
-
-The go app runs an HTTP server for prom at http://localhost:2112 
+1. `Make`  : To compile the eBPF code and run main.go 
+2. `./run_prom.sh` : To start Prometheus
+3. `./create_tcp_chaos.sh` : To start `tc` and generate TCP requests. 
 
 
-## Prom Output 
-http://locahost:9090 
+## Observe 
+
+Head over to your Prometheus interface and type `tcp_retransmissions_total` into the query bar. Switch to the graph view and marvel at the results of your hard work.
+
+You're now in a position to set up alerts for TCP retransmissions. A common benchmark to consider is that a retransmission rate of 2% or greater generally indicates network issues that warrant attention.
+
+So grab a cup of coffee, sit back, and enjoy the fruit of your labour!
 
 
-<img width="1410" alt="Screenshot 2023-04-23 at 7 45 30 pm" src="https://user-images.githubusercontent.com/2548160/233858880-d68090ce-26aa-48f7-b698-46275ade0e31.png">
-
-<img width="1404" alt="Screenshot 2023-04-23 at 7 43 37 pm" src="https://user-images.githubusercontent.com/2548160/233858885-0e011398-f7a4-47ee-8809-c1e2156402af.png">
-
-
-## Console Output 
-
-```
-{"destination":{"ip":"142.250.180.4","port":443},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":38130},"state":65536,"timestamp":"1970-01-04T23:40:37Z"}
-{"destination":{"ip":"142.250.180.4","port":443},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":38130},"state":720896,"timestamp":"1970-01-04T23:40:38Z"}
-{"destination":{"ip":"142.250.180.4","port":443},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":60288},"state":65536,"timestamp":"1970-01-04T23:40:44Z"}
-{"destination":{"ip":"192.168.5.2","port":51121},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":22},"state":65536,"timestamp":"1970-01-04T23:41:13Z"}
-{"destination":{"ip":"142.250.180.4","port":443},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":56912},"state":65536,"timestamp":"1970-01-04T23:41:51Z"}
-{"destination":{"ip":"142.250.180.4","port":443},"ipversion":4,"pid":0,"source":{"ip":"192.168.5.15","port":56912},"state":65536,"timestamp":"1970-01-04T23:41:52Z"}
-```
-This output indicates that a TCP retransmission event has been captured, and it provides detailed of the event. 
-
---
-
-
-## Tips 
-
-1. Display tracepoint return fields 
-`sudo cat /sys/kernel/debug/tracing/events/tcp/tcp_retransmit_skb/format`
-
-2. To create the vmlinux.h file, you will need to use the BPF CO-RE (Compile Once, Run Everywhere) feature provided by bpftool. The vmlinux.h file is a generated header file that includes kernel structures and definitions required for BPF programs.
-
-To generate the vmlinux.h file, follow these steps:
-
-First, ensure you have bpftool installed on your system. You can usually find it in the linux-tools package or compile it from the kernel source.
-
-```
-bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
-```
-
-Now you should have a vmlinux.h file in your current working directory. You can include this file in your eBPF C programs to access kernel structures and definitions.
-
-Please note that the  vmlinux.h file is specific to the kernel version and configuration, so it's recommended to generate it for each target system where you want to run your eBPF program.
-
-
-## Refs
-
-Must read - https://www.man7.org/linux/man-pages/man2/bpf.2.html 
-Retrans fields: https://github.com/iovisor/bcc/blob/master/tools/tcpretrans_example.txt
-BPF CORE : https://facebookmicrosites.github.io/bpf/blog/2020/02/19/bpf-portability-and-co-re.html 
-TCP tracepoints : https://www.brendangregg.com/blog/2018-03-22/tcp-tracepoints.html 
-eBPF applications : https://ebpf.io/applications/
+<p align="center">
+<img width="1510"  src="https://user-images.githubusercontent.com/2548160/273732219-e4b7bcf0-5d4a-456a-8197-543ecbcea061.png">
+</p>
