@@ -11,7 +11,6 @@ The diagram below depicts the solution.
 <img width="1510" alt="the solution" src="https://user-images.githubusercontent.com/2548160/273732796-16810c09-bf82-4bcb-a2ac-ca3ab04bfbb1.png">
 </p>
 
-
 ## Preparation and Environment Setup
 Before we begin, it's important to have your development environment properly configured. While this blog isn't an exhaustive tutorial, I'll outline the key prerequisites briefly. 
 
