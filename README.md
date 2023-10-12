@@ -5,6 +5,14 @@
 > Refer to this blog post for details on the background and motivation behind this experiment -  **[https://www.israelo.io/blog/ebpf-net-viz/](https://www.israelo.io/blog/ebpf-net-viz/)**
 
 
+
+## Usage 
+
+1. `Make` : To compile the eBPF code and run main.go 
+2. `./run_prom.sh` : To start Prometheus
+3. `./create_tcp_chaos.sh` : To start `tc` and generate TCP requests. 
+
+
 ## How it works 
 
 The diagram below depicts the solution. 
@@ -13,13 +21,7 @@ The diagram below depicts the solution.
 <img width="1510" alt="the solution" src="https://user-images.githubusercontent.com/2548160/274510771-99bb4583-c7be-4e3e-83fc-283ea99d0195.png">
 </p>
 
-
-## Usage 
-
-1. `Make` : To compile the eBPF code and run main.go 
-2. `./run_prom.sh` : To start Prometheus
-3. `./create_tcp_chaos.sh` : To start `tc` and generate TCP requests. 
-
+Read the blog post for details [https://www.israelo.io/blog/ebpf-net-viz/](https://www.israelo.io/blog/ebpf-net-viz/)
 
 ## Observe 
 
