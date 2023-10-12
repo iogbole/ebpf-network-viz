@@ -1,5 +1,5 @@
 
-#  Getting Started with eBPF: Monitoring TCP Retransmissions with eBPF, Go, and Prometheus 
+#  Getting Started with eBPF: Monitoring TCP Retransmissions with eBPF, Go and Prometheus 
 
 > [!IMPORTANT]  
 > Refer to this blog post for details on the background and motivation behind this experiment -  **[https://www.israelo.io/blog/ebpf-net-viz/](https://www.israelo.io/blog/ebpf-net-viz/)**
