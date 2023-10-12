@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	objFileName = "./ebpf/retrans.o"
+	objFileName = "./src/ebpf/retrans.o"
 )
 
 type tcpRetransmitEvent struct {

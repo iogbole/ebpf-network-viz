@@ -16,3 +16,6 @@ echo "Updated prometheus.yml with IP address: $IP_ADDRESS"
 sleep 3
 
 nerdctl run --rm -p 9090:9090 -v "$PWD/prom_config:/etc/prometheus" prom/prometheus
+
+
+
