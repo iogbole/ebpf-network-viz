@@ -20,8 +20,10 @@ The diagram below depicts the solution.
 Read the blog post for details [https://www.israelo.io/blog/ebpf-net-viz/](https://www.israelo.io/blog/ebpf-net-viz/)
 
 
+
 <p align="center">
-<img width="1510" alt="the solution" src="https://user-images.githubusercontent.com/2548160/274725653-9b2ac550-01cc-4015-befb-9539a9b38d03.gif">
+<img width="1510" alt="the solution" 
+src="https://user-images.githubusercontent.com/2548160/274510771-99bb4583-c7be-4e3e-83fc-283ea99d0195.png">
 </p>
 
 
@@ -31,7 +33,7 @@ Read the blog post for details [https://www.israelo.io/blog/ebpf-net-viz/](https
 Head over to your Prometheus interface and type `tcp_retransmissions_total` into the query bar. Switch to the graph view and marvel at the results of your hard work.
 
 <p align="center">
-<img width="1510"  src="https://user-images.githubusercontent.com/2548160/273732219-e4b7bcf0-5d4a-456a-8197-543ecbcea061.png">
+<img width="1510"  src="https://user-images.githubusercontent.com/2548160/274725653-9b2ac550-01cc-4015-befb-9539a9b38d03.gif">
 </p>
 
 
