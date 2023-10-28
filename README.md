@@ -25,10 +25,10 @@ Read the blog post for details [https://www.israelo.io/blog/ebpf-net-viz/](https
 </p>
 
 
+
 ## Observe 
 
 Head over to your Prometheus interface and type `tcp_retransmissions_total` into the query bar. Switch to the graph view and marvel at the results of your hard work.
-
 
 <p align="center">
 <img width="1510"  src="https://user-images.githubusercontent.com/2548160/273732219-e4b7bcf0-5d4a-456a-8197-543ecbcea061.png">
